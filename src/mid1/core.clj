@@ -7,11 +7,22 @@
   (:gen-class))
 
 (def maple (midi/sequence (io/resource "maple.mid")))
+(def fluid (midi/soundbank (io/resource "FluidR3_GM.sf2")))
 
 (def sqcr (midi/sequencer))
+
+(comment
+  (do (def synth (midi/synthesizer))
+      (sound/open! synth)
+      (midi/load! synth fluid)
+      (sound/connect! sqcr synth))
+  )
+
 (sound/open! sqcr)
 (midi/sequence! sqcr maple)
+
 (sound/start! sqcr)
+(sound/stop! sqcr)
 
 (defn -main
   "I don't do a whole lot ... yet."
