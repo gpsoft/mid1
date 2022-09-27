@@ -38,9 +38,8 @@
   (.send (.getReceiver defaultSynthesizer) (ShortMessage. ShortMessage/NOTE_ON 0 60 50) -1)
   ; ♪Grand piano sound
 
-  (.programChange (first (.getChannels defaultSynthesizer)) 100)
+  (.programChange (first (.getChannels defaultSynthesizer)) 6)
   (.send (.getReceiver defaultSynthesizer) (ShortMessage. ShortMessage/NOTE_ON 0 60 50) -1)
-  #_(.send (.getReceiver defaultSynthesizer) (ShortMessage. ShortMessage/NOTE_OFF 0 60 50) -1)
   ; ♪Harpsichord sound? maybe
 
   ;; sample midi data
@@ -55,11 +54,18 @@
   ; :vendor "Oracle Corporation"
   ; :version "Version 1.0"}
 
-  (.open sequencer)
+  (count (.getTransmitters sequencer))
+  ; 1
 
-  (.getReceiver (.getTransmitter sequencer))
-  ; nil
-  ; レシーバがつながってない。
+  (def tx (first (.getTransmitters sequencer)))
+  (.getReceiver tx)
+  ; {:class "SoftReceiver", :id 2064131581}
+  ; どこにつながってるのか良くわからん。
+
+  ;; (.getTransmitter sequencer)すると、そのたびに新しいトランスミッタが生成される。
+  ;; 既存のトランスミッタを使うなら、getTransmittersしてnthする方がいいのかな?
+
+  (.open sequencer)
 
   (.getSequence sequencer)
   ; nil
@@ -68,15 +74,17 @@
     (.start sequencer)
     (Thread/sleep 2000)
     (.stop sequencer))
-  ; でも音は鳴る。なんで?
+  ; グランドピアノの音。
+  ; どのシンセサイザが音を鳴らしてるのか?
 
-  (.setReceiver (.getTransmitter sequencer) (.getReceiver defaultSynthesizer))
-  ; レシーバをつなげる
+  (.setReceiver tx (.getReceiver defaultSynthesizer))
+  ; シーケンサのトランスミッタをdefaultSynthesizerへつなげる
+  ; sequencer→synthesizer
   (future
     (.start sequencer)
     (Thread/sleep 2000)
     (.stop sequencer))
-  ; ハープシコード…かな?
+  ; ハープシコード…かなぁ?
   )
 
 
