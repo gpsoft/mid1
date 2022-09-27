@@ -5,7 +5,7 @@
     [uncomplicate.clojure-sound.midi :as midi]
     #_[uncomplicate.commons.core :refer [close!]])
   (:import
-    [javax.sound.midi MidiSystem ShortMessage]
+    [javax.sound.midi MidiSystem ShortMessage Sequencer Synthesizer Sequence]
     #_[javax.sound.sampled AudioSystem]
     #_[com.sun.media.sound SF2Soundbank])
   (:gen-class))
@@ -119,28 +119,94 @@
     (.stop sequencer))
   )
 
+(defn dev-type
+  [dev]
+  (let [sqcr (instance? Sequencer dev)
+        synth (instance? Synthesizer dev)
+        port (not (or sqcr synth))
+        in (zero? (.getMaxReceivers dev))]
+    (cond
+      sqcr :sequencer
+      synth :synthesizer
+      in :in-port
+      :else :out-port)))
 
+(defn render-dev
+  [dev]
+  (let [klass (.getClass dev)
+        id (System/identityHashCode dev)
+        info (.getDeviceInfo dev)
+        hash (.hashCode info)
+        name (.getName info)
+        open (.isOpen dev)
+        type (dev-type dev)
+        rxs (count (.getReceivers dev))
+        txs (count (.getTransmitters dev))]
+    (format "%s(%s) TX:%d,RX:%d %s" name (if open "open" "close") txs rxs type)))
 
-;;(def maple (midi/sequence (io/resource "maple.mid")))
-;;(def fluid (midi/soundbank (io/resource "FluidR3_GM.sf2")))
-;;(def salamander (midi/soundbank (io/resource "SalamanderGrandPiano.sf2")))
-;;#_(def salamander (SF2Soundbank. (io/file "SalamanderGrandPiano/SalamanderGrandPiano.sfz")))
-;;
-;;(def sqcr (midi/sequencer))
-;;
-;;(comment
-;;  (do (def synth (midi/synthesizer))
-;;      (sound/open! synth)
-;;      #_(midi/load! synth fluid)
-;;      (midi/load! synth salamander)
-;;      (sound/connect! sqcr synth))
-;;  )
-;;
-;;(sound/open! sqcr)
-;;(midi/sequence! sqcr maple)
-;;
-;;(sound/start! sqcr)
-;;(sound/stop! sqcr)
+(defn devices
+  []
+  (let [infos (MidiSystem/getMidiDeviceInfo)
+        devs (map #(MidiSystem/getMidiDevice %) infos)]
+    (dorun
+      (map-indexed #(println (format "[%d]%s" %1 (render-dev %2))) devs))))
+
+(defn piano
+  []
+  (let [dev (MidiSystem/getSynthesizer)
+        sb (MidiSystem/getSoundbank (io/resource "SalamanderGrandPiano.sf2"))]
+    (.open dev)
+    (.loadAllInstruments dev sb)
+    dev))
+
+(defn in-port
+  []
+  (let [infos (MidiSystem/getMidiDeviceInfo)
+        devs (map #(MidiSystem/getMidiDevice %) infos)
+        dev (first (filter #(= (dev-type %) :in-port) devs))]
+    (when dev
+      (.open dev))
+    dev))
+
+(defn connect
+  [from to]
+  (let [tx (.getTransmitter from)]
+    (.setReceiver tx (.getReceiver to))))
+
+(comment
+  (let [synth (piano)
+        in (in-port)
+        sqcr (MidiSystem/getSequencer)
+        _ (.open sqcr)
+        _ (connect sqcr synth)
+        empty-seq (Sequence. Sequence/PPQ 10)
+        - (println (MidiSystem/getMidiFileTypes empty-seq))
+        track (.createTrack empty-seq)
+        _ (.setSequence sqcr empty-seq)
+        _ (.recordEnable sqcr track 0)]
+    (if in
+      (do (connect in sqcr)
+          (println "size:" (.size track))
+          (.startRecording sqcr)
+          (future
+            (Thread/sleep 10000)
+            (.stopRecording sqcr)
+            (println "size:" (.size track))
+            (MidiSystem/write empty-seq 1 (io/file "/var/tmp/sample.mid"))
+            (.close in)
+            (.close sqcr)
+            (.close synth)))
+      (do
+        (.setSequence sqcr (MidiSystem/getSequence (io/file "/var/tmp/sample.mid")))
+        (future
+          (.setTickPosition sqcr 0)
+          (.start sqcr)
+          (Thread/sleep 10000)
+          (.stop sqcr)
+          (.close sqcr)
+          (.close synth))))
+    )
+  )
 
 (defn -main
   "I don't do a whole lot ... yet."
