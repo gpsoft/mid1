@@ -108,6 +108,15 @@
                (Thread/sleep 2000)
                (.stop sequencer))))
          (take 40 (.getLoadedInstruments defaultSynthesizer))))
+
+  (def salamander (MidiSystem/getSoundbank (io/resource "SalamanderGrandPiano.sf2")))
+  (.unloadAllInstruments defaultSynthesizer fluid)
+  (.loadInstrument defaultSynthesizer (first (.getInstruments salamander)))
+  (future
+    (.setTickPosition sequencer 0)
+    (.start sequencer)
+    (Thread/sleep 10000)
+    (.stop sequencer))
   )
 
 
