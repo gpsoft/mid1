@@ -26,6 +26,12 @@
   (.open defaultSynthesizer)
   (count (.getLoadedInstruments defaultSynthesizer))
   ; 129
+  (.getDefaultSoundbank defaultSynthesizer)
+  ; {:class "SF2Soundbank"
+  ;  :description "Emergency generated soundbank"
+  ;  :name "Emergency GM sound set"
+  ;  :vendor "Generated"
+  ;  :version "2.1"}
   (.getName (first (.getLoadedInstruments defaultSynthesizer)))
   ; "Acoustic Grand Piano"
   (.getName (nth (.getLoadedInstruments defaultSynthesizer) 6))
@@ -47,12 +53,12 @@
 
   (def sequencer (MidiSystem/getSequencer))
   ; {:class "RealTimeSequencer"
-  ; :status :closed
-  ; :micro-position 0
-  ; :description "Software sequencer"
-  ; :name "Real Time Sequencer"
-  ; :vendor "Oracle Corporation"
-  ; :version "Version 1.0"}
+  ;  :status :closed
+  ;  :micro-position 0
+  ;  :description "Software sequencer"
+  ;  :name "Real Time Sequencer"
+  ;  :vendor "Oracle Corporation"
+  ;  :version "Version 1.0"}
 
   (count (.getTransmitters sequencer))
   ; 1
@@ -81,10 +87,27 @@
   ; シーケンサのトランスミッタをdefaultSynthesizerへつなげる
   ; sequencer→synthesizer
   (future
+    (.setTickPosition sequencer 0)
     (.start sequencer)
     (Thread/sleep 2000)
     (.stop sequencer))
   ; ハープシコード…かなぁ?
+
+  (.unloadAllInstruments defaultSynthesizer (.getDefaultSoundbank defaultSynthesizer ))
+  (def fluid (MidiSystem/getSoundbank (io/resource "FluidR3_GM.sf2")))
+  (.loadAllInstruments defaultSynthesizer fluid)
+  (dorun
+    (map (fn [inst]
+           (let [prg (.getProgram (.getPatch inst))]
+             (future
+               (Thread/sleep (* 2200 prg))
+               (prn (.getName inst))
+               (.programChange (first (.getChannels defaultSynthesizer)) prg)
+               #_(.setTickPosition sequencer 0)
+               (.start sequencer)
+               (Thread/sleep 2000)
+               (.stop sequencer))))
+         (take 40 (.getLoadedInstruments defaultSynthesizer))))
   )
 
 
