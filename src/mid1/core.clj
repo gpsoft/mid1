@@ -1,9 +1,6 @@
 (ns mid1.core
   (:require
-    [clojure.java.io :as io]
     [mid1.midi :as midi])
-  (:import
-    [javax.sound.midi MidiSystem ShortMessage Sequencer Synthesizer Sequence])
   (:gen-class))
 
 (defn open!
@@ -14,32 +11,66 @@
     [pcspkr recorder d1-in]))
 
 (defn close!
-  [devices]
-  (dorun (for [dev devices]
+  [devs]
+  (dorun (for [dev devs]
            (when dev (midi/close-dev! dev)))))
 
-(comment
+(defn show-status
+  [devs]
+  (dorun
+    (map #(println (midi/render-dev %)) devs)))
+
+(defn play!
+  [path sec]
+  (let [devs (open!)
+        [pcspkr recorder] devs]
+    (let [m (midi/new-media! :file path)]
+      (midi/connect! recorder pcspkr)
+      (midi/play!
+        recorder m (* sec 1000)
+        #(close! devs)))
+    (if (pos? sec) nil devs)))
+
+(defn record!
+  [path sec]
   (let [devs (open!)
         [pcspkr recorder d1-in] devs
-        [empty-media track] (midi/new-media! :scratch nil)
-        path "/var/tmp/sample.mid"]
+        [empty-media track] (midi/new-media! :scratch nil)]
     (when d1-in
       (midi/connect! d1-in pcspkr)
       (midi/connect! d1-in recorder)
       (midi/prepare-rec! recorder empty-media)
       (midi/start-rec!
-        recorder 60000
+        recorder (* sec 1000)
         #(do
            (midi/save! recorder path)
-           (close! devs)))))
-  (let [devs (open!)
-        [pcspkr recorder] devs
-        path "/var/tmp/sample.mid"]
-    (let [m (midi/new-media! :file path)]
-      (midi/connect! recorder pcspkr)
-      (midi/play!
-        recorder m 60000
-        #(close! devs))))
+           (close! devs))))
+    (if (pos? sec) nil devs)))
+
+(defn end!
+  [[_ recorder _ :as devs] path]
+  (midi/stop! recorder)
+  (when path
+    (midi/save! recorder path))
+  (close! devs))
+
+(comment
+  (def midi-path "/var/tmp/sample.mid" )
+
+  (play! midi-path 5)
+
+  (def devs (play! midi-path 0))
+  (show-status devs)
+  (do (end! devs nil)
+      (def devs nil));
+
+  (record! midi-path 5)
+
+  (def devs (record! midi-path 0))
+  (show-status devs)
+  (do (end! devs midi-path)
+      (def devs nil));
+
   )
 
 

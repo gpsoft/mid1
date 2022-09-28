@@ -1,14 +1,13 @@
 (ns mid1.midi
   (:require
-    [clojure.java.io :as io]
-    #_[uncomplicate.clojure-sound.core :as sound]
-    [uncomplicate.clojure-sound.midi :as midi]
-    #_[uncomplicate.commons.core :refer [close!]])
+    [clojure.java.io :as io])
   (:import
-    [javax.sound.midi MidiSystem ShortMessage Sequencer Synthesizer Sequence]
+    [javax.sound.midi
+     MidiSystem ShortMessage Sequencer Synthesizer Sequence]
     #_[javax.sound.sampled AudioSystem]
     #_[com.sun.media.sound SF2Soundbank]))
 
+;; type of midi device
 (defn dev-type
   [dev]
   (let [sqcr (instance? Sequencer dev)
@@ -21,52 +20,85 @@
       in :in-port
       :else :out-port)))
 
+(defmulti render dev-type)
+(defmethod render :sequencer [dev]
+  (let [rec (.isRecording dev)
+        run (.isRunning dev)
+        tick (.getTickPosition dev)
+        st (if rec "recording" (if run "playing" "idle"))]
+    (format "TICK:%d %s" tick st)))
+(defmethod render :default [dev]
+  "")
+
 (defn render-dev
   [dev]
-  (let [klass (.getClass dev)
-        id (System/identityHashCode dev)
-        info (.getDeviceInfo dev)
-        hash (.hashCode info)
-        name (.getName info)
-        open (.isOpen dev)
-        type (dev-type dev)
-        rxs (count (.getReceivers dev))
-        txs (count (.getTransmitters dev))]
-    (format "%s(%s) TX:%d,RX:%d %s" name (if open "open" "close") txs rxs type)))
+  (when dev
+    (let [klass (.getClass dev)
+          id (System/identityHashCode dev)
+          info (.getDeviceInfo dev)
+          hash (.hashCode info)
+          name (.getName info)
+          open (.isOpen dev)
+          type (dev-type dev)
+          rxs (count (.getReceivers dev))
+          txs (count (.getTransmitters dev))]
+      (format "%25s %s TX:%d,RX:%d %s"
+              name (if open "open" "close") txs rxs (render dev)))))
 
-(defn devices
+(defn list-devices
   []
   (let [infos (MidiSystem/getMidiDeviceInfo)
         devs (map #(MidiSystem/getMidiDevice %) infos)]
     (dorun
       (map-indexed #(println (format "[%d]%s" %1 (render-dev %2))) devs))))
 
+(defn open-dev!
+  [dev]
+  (when dev
+    (when-not (.isOpen dev)
+      #_(prn "Open: " (System/identityHashCode dev))
+      (.open dev))))
+
 (defn close-dev!
   [dev]
-  (.close dev))
+  (when (and dev (.isOpen dev))
+    #_(prn "Close " (System/identityHashCode dev))
+    (.close dev)))
 
 (defn open-pcspkr!
   []
   (let [dev (MidiSystem/getSynthesizer)
-        sb (MidiSystem/getSoundbank (io/resource "SalamanderGrandPiano.sf2"))]
-    (.open dev)
+        sb (MidiSystem/getSoundbank
+             (io/resource
+               #_"FluidR3_GM.sf2"
+               "SalamanderGrandPiano.sf2"))]
+    (open-dev! dev)
     (.loadAllInstruments dev sb)
     dev))
 
 (defn open-recorder!
   []
   (let [dev (MidiSystem/getSequencer)]
-    (.open dev)
+    (open-dev! dev)
     dev))
 
-(defn open-d1-in!
-  []
+;; midi-in port *FROM* Korg D1
+;; or midi-out port *TO* Korg D1
+(defn open-d1-port!
+  [in-out]
   (let [infos (MidiSystem/getMidiDeviceInfo)
         devs (map #(MidiSystem/getMidiDevice %) infos)
-        dev (first (filter #(= (dev-type %) :in-port) devs))]
+        dev (first (filter #(= (dev-type %) in-out) devs))]
     (when dev
-      (.open dev))
+      (open-dev! dev))
     dev))
+(defn open-d1-in!
+  []
+  (open-d1-port! :in-port))
+(defn open-d1-out!
+  []
+  (open-d1-port! :out-port))
+
 
 (defn connect!
   [from to]
@@ -87,11 +119,12 @@
   [recorder s elapse cc]
   (.setSequence recorder s)
   (.setTickPosition recorder 0)
-  (future
-    (.start recorder)
-    (Thread/sleep elapse)
-    (.stop recorder)
-    (cc)))
+  (.start recorder)
+  (when (pos? elapse)
+    (future
+      (Thread/sleep elapse)
+      (.stop recorder)
+      (cc))))
 
 (defn prepare-rec!
   [recorder s]
@@ -103,17 +136,25 @@
 
 (defn start-rec!
   [recorder elapse cc]
-  (future
-    (.startRecording recorder)
-    (Thread/sleep elapse)
-    (.stopRecording recorder)
-    (cc)))
+  (when (pos? elapse)
+    (future
+      (.startRecording recorder)
+      (Thread/sleep elapse)
+      (.stopRecording recorder)
+      (cc))))
+
+;; stop playback or recording
+(defn stop!
+  [recorder]
+  (when (.isOpen recorder)
+    (.stop recorder)))
 
 (defn save!
   [recorder path]
-  (let [s (.getSequence recorder)
-        t (first (MidiSystem/getMidiFileTypes s))]
-    (MidiSystem/write s t (io/file path))))
+  (let [s (.getSequence recorder)]
+    (when s
+      (let [file-type (first (MidiSystem/getMidiFileTypes s))]
+        (MidiSystem/write s file-type (io/file path))))))
 
 
 (comment
@@ -173,7 +214,7 @@
   ; {:class "SoftReceiver", :id 2064131581}
   ; どこにつながってるのか良くわからん。
 
-  ;; (.getTransmitter sequencer)すると、そのたびに新しいトランスミッタが生成される。
+  ;; (.getTransmitter sequencer)すると、そのたびに新しいトランスミッタオブジェクトが生成される。
   ;; 既存のトランスミッタを使うなら、getTransmittersしてnthする方がいいのかな?
 
   (.open sequencer)
@@ -222,7 +263,4 @@
     (.start sequencer)
     (Thread/sleep 10000)
     (.stop sequencer))
-  )
-
-(comment
   )
