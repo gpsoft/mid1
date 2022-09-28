@@ -1,9 +1,12 @@
 (ns mid1.midi
   (:require
-    [clojure.java.io :as io])
+    [clojure.java.io :as io]
+    mid1.monitor)
   (:import
     [javax.sound.midi
-     MidiSystem ShortMessage Sequencer Synthesizer Sequence]
+     MidiSystem ShortMessage Sequencer Synthesizer
+     Sequence Receiver MidiDevice]
+    #_[jp.dip.gpsoft.mid1 Monitor]
     #_[javax.sound.sampled AudioSystem]
     #_[com.sun.media.sound SF2Soundbank]))
 
@@ -25,18 +28,18 @@
   (let [rec (.isRecording dev)
         run (.isRunning dev)
         tick (.getTickPosition dev)
+        len (.getTickLength dev)
         st (if rec "recording" (if run "playing" "idle"))]
-    (format "TICK:%d %s" tick st)))
+    (format "TICK:%d,LEN:%d %s" tick len st)))
 (defmethod render :default [dev]
   "")
 
 (defn render-dev
   [dev]
-  (when dev
+  (when (and dev (instance? MidiDevice dev))
     (let [klass (.getClass dev)
           id (System/identityHashCode dev)
           info (.getDeviceInfo dev)
-          hash (.hashCode info)
           name (.getName info)
           open (.isOpen dev)
           type (dev-type dev)
@@ -61,7 +64,7 @@
 
 (defn close-dev!
   [dev]
-  (when (and dev (.isOpen dev))
+  (when (and dev (instance? MidiDevice dev) (.isOpen dev))
     #_(prn "Close " (System/identityHashCode dev))
     (.close dev)))
 
@@ -99,11 +102,17 @@
   []
   (open-d1-port! :out-port))
 
+(defn open-monitor!
+  []
+  (jp.dip.gpsoft.mid1.Monitor.))
 
 (defn connect!
   [from to]
-  (let [tx (.getTransmitter from)]
-    (.setReceiver tx (.getReceiver to))))
+  (when to
+    (let [tx (.getTransmitter from)
+          rx (if (instance? MidiDevice to)
+               (.getReceiver to) to)]
+      (.setReceiver tx rx))))
 
 (defn new-media!
   [from path]
@@ -136,9 +145,9 @@
 
 (defn start-rec!
   [recorder elapse cc]
+  (.startRecording recorder)
   (when (pos? elapse)
     (future
-      (.startRecording recorder)
       (Thread/sleep elapse)
       (.stopRecording recorder)
       (cc))))

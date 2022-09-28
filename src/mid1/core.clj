@@ -7,8 +7,9 @@
   []
   (let [pcspkr (midi/open-pcspkr!)
         recorder (midi/open-recorder!)
-        d1-in (midi/open-d1-in!)]
-    [pcspkr recorder d1-in]))
+        d1-in (midi/open-d1-in!)
+        monitor (midi/open-monitor!)]
+    [pcspkr recorder d1-in monitor]))
 
 (defn close!
   [devs]
@@ -34,11 +35,12 @@
 (defn record!
   [path sec]
   (let [devs (open!)
-        [pcspkr recorder d1-in] devs
+        [pcspkr recorder d1-in monitor] devs
         [empty-media track] (midi/new-media! :scratch nil)]
     (when d1-in
       (midi/connect! d1-in pcspkr)
       (midi/connect! d1-in recorder)
+      (midi/connect! d1-in monitor)
       (midi/prepare-rec! recorder empty-media)
       (midi/start-rec!
         recorder (* sec 1000)
