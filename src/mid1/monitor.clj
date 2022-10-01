@@ -1,4 +1,6 @@
 (ns mid1.monitor
+  (:require
+    [clojure.pprint :as pp])
   (:import
     [javax.sound.midi MidiMessage ShortMessage]))
 
@@ -81,7 +83,19 @@
       (.equals status  ShortMessage/CONTROL_CHANGE) (swap! state append-pedal-event ts val1 val2)
       :else nil)))
 
+(defn render
+  [this]
+  (let [state (.state this)
+        events (:events @state)]
+    (format "%d events sent" (count events))))
+
 (defn events
   [this]
   (let [state (.state this)]
     (:events @state)))
+
+(defn save!
+  [this path]
+  (let [state (.state this)
+        events (:events @state)]
+    (spit path (with-out-str (pp/pprint events)))))

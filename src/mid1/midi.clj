@@ -50,8 +50,7 @@
 
 (defn render-monitor
   [monitor]
-  (let [events (mon/events monitor)]
-    (format "%25s %d event(s)" "Monitor" (count events))))
+  (format "%25s %s" "Monitor" (mon/render monitor)))
 
 (defn list-devices
   []

@@ -1,6 +1,7 @@
 (ns mid1.core
   (:require
-    [mid1.midi :as midi])
+    [mid1.midi :as midi]
+    [mid1.monitor :as mon])
   (:gen-class))
 
 (defn open!
@@ -55,6 +56,7 @@
   (midi/stop! recorder)
   (when path
     (midi/save! recorder path))
+  (mon/save! monitor "/var/tmp/sample.edn")
   (close! devs))
 
 (comment
