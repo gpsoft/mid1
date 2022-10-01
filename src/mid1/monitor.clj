@@ -8,7 +8,7 @@
   )
 
 (gen-class
-  :name jp.dip.gpsoft.mid1.Monitor
+  :name mid1.monitor.Monitor
   :implements [javax.sound.midi.Receiver]
   :prefix mon-
   :state state

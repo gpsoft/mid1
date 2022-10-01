@@ -109,7 +109,7 @@
 
 (defn open-monitor!
   []
-  (jp.dip.gpsoft.mid1.Monitor.))
+  (mid1.monitor.Monitor.))
 
 (defn connect!
   [from to]
