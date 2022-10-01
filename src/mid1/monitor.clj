@@ -21,14 +21,15 @@
 
 (def ctlno-pedal 64)
 (defn- pedal-on? [val] (> val 63))
+(defn msec [usec] (quot usec 1000))
 
 (defn- pedal-event
   [ts on?]
-  [ts (if on? :pedal-on :pedal-off)])
+  [(msec ts) (if on? :pedal-on :pedal-off)])
 
 (defn- note-event
   [ts note velocity length]
-  [ts :note note velocity length])
+  [(msec ts) :note note velocity (msec length)])
 
 (defn- append-event
   [st ev]
@@ -54,7 +55,7 @@
     (if on-ts
       (assoc st
              :on-map (dissoc on-m note)
-             :events (conj evs (note-event on-ts note velo (- on-ts ts))))
+             :events (conj evs (note-event on-ts note velo (- ts on-ts))))
       st)))
 
 
@@ -73,10 +74,12 @@
         status (.getStatus msg)
         val1 (.getData1 msg)
         val2 (.getData2 msg)]
-    (case status
-      ShortMessage/NOTE_ON (swap! state keep-on ts val1 val2)
-      ShortMessage/NOTE_OFF (swap! state resolve-note ts val1)
-      ShortMessage/CONTROL_CHANGE (swap! state append-pedal-event ts val1 val2))))
+    #_(prn @state)
+    (cond
+      (.equals status ShortMessage/NOTE_ON) (swap! state keep-on ts val1 val2)
+      (.equals status ShortMessage/NOTE_OFF) (swap! state resolve-note ts val1)
+      (.equals status  ShortMessage/CONTROL_CHANGE) (swap! state append-pedal-event ts val1 val2)
+      :else nil)))
 
 (defn events
   [this]
