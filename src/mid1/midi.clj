@@ -1,7 +1,7 @@
 (ns mid1.midi
   (:require
     [clojure.java.io :as io]
-    mid1.monitor)
+    [mid1.monitor :as mon])
   (:import
     [javax.sound.midi
      MidiSystem ShortMessage Sequencer Synthesizer
@@ -47,6 +47,11 @@
           txs (count (.getTransmitters dev))]
       (format "%25s %s TX:%d,RX:%d %s"
               name (if open "open" "close") txs rxs (render dev)))))
+
+(defn render-monitor
+  [monitor]
+  (let [events (mon/events monitor)])
+  (format "%25s %d event(s)" "Monitor" (count events)))
 
 (defn list-devices
   []
