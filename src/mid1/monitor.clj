@@ -1,6 +1,4 @@
 (ns mid1.monitor
-  (:require
-    [clojure.pprint :as pp])
   (:import
     [javax.sound.midi MidiMessage ShortMessage]))
 
@@ -60,6 +58,50 @@
              :events (conj evs (note-event on-ts note velo (- ts on-ts))))
       st)))
 
+(defn align-events
+  [events]
+  (loop [aligned []
+         prev-ts 0
+         events events]
+    (if (seq events)
+      (let [event (first events)
+            ts (first event)]
+        (if (< (- ts prev-ts) 80)
+          (recur (conj aligned (assoc event 0 prev-ts))
+                 prev-ts
+                 (rest events))
+          (recur (conj aligned event)
+                 ts
+                 (rest events))))
+      aligned)))
+
+(defn- mk-note
+  [[_ _ note-no _ length]]
+  {:note-no note-no
+   :hand :left
+   :finger-no 1
+   :length (quot length 240)})
+
+(defn- mk-step
+  [evs]
+  (let [notes (filter #(= (second %) :note) evs)
+        ped-on? (some #(= (second %) :pedal-on) evs)
+        ped-off? (some #(= (second %) :pedal-off) evs)
+        step (if ped-on? {:pedal :on}
+               (if ped-off? {:pedal :off} {}))]
+    (assoc step :notes (mapv mk-note notes))))
+
+(defn render-events
+  [events]
+  (let [ev-m (->> events
+                  align-events
+                  (group-by first)
+                  (into (sorted-map)))
+        steps (mapv mk-step (vals ev-m))]
+    {:title "unknown"
+     :url ""
+     :tempo 120
+     :steps steps}))
 
 (defn mon-init
   []
@@ -98,4 +140,4 @@
   [this path]
   (let [state (.state this)
         events (:events @state)]
-    (spit path (with-out-str (pp/pprint events)))))
+    (spit path (with-out-str (render-events events)))))

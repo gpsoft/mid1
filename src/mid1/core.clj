@@ -56,7 +56,7 @@
   (midi/stop! recorder)
   (when path
     (midi/save! recorder path))
-  (mon/save! monitor "/var/tmp/sample.edn")
+  #_(mon/save! monitor "/var/tmp/sample.edn")
   (close! devs))
 
 (comment
@@ -75,6 +75,17 @@
   (show-status nodes)
   (do (end! nodes midi-path)
       (def nodes nil));
+
+  (require '[clojure.java.io :as io]
+           '[clojure.edn :as edn])
+  (let [events (->> "sample.edn"
+                    io/resource
+                    slurp
+                    edn/read-string
+                    (sort-by first))]
+    #_(mon/align-events events)
+    (mon/render-events events)
+    #_(filter #(= (second %) :note) events))
 
   )
 
