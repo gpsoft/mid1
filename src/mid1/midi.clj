@@ -31,6 +31,9 @@
         len (.getTickLength dev)
         st (if rec "recording" (if run "playing" "idle"))]
     (format "TICK:%d,LEN:%d %s" tick len st)))
+(defmethod render :synthesizer [dev]
+  (let [latency (.getLatency dev)]
+    (format "LATENCY:%d" latency)))
 (defmethod render :default [dev]
   "")
 
