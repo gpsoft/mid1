@@ -127,7 +127,7 @@
   (let [notes (filter-events #{:note} evs)
         ped-on? (seq (filter-events #{:pedal-on} evs))
         ped-off? (seq (filter-events #{:pedal-off} evs))
-        step (if ped-on? {:pedal :on}
+        step (if ped-on? {:bar-top? true :pedal :on}
                (if ped-off? {:pedal :off} {}))]
     (assoc step :notes (mapv mk-note notes))))
 
