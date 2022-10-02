@@ -27,12 +27,17 @@
   [path sec]
   (let [[devs :as nodes] (open!)
         [pcspkr recorder] devs]
-    (let [m (midi/new-media! :file path)]
+    (let [m (midi/new-media! :file (str path ".mid"))]
       (midi/connect! recorder pcspkr)
       (midi/play!
         recorder m (* sec 1000)
         #(close! devs)))
     (if (pos? sec) nil nodes)))
+
+(defn save!
+  [path recorder monitor]
+  (midi/save! recorder (str path ".mid"))
+  (mon/save! monitor (str path ".edn")))
 
 (defn record!
   [path sec]
@@ -47,7 +52,8 @@
       (midi/start-rec!
         recorder (* sec 1000)
         #(do
-           (midi/save! recorder path)
+           (when path
+             (save! path recorder monitor))
            (close! devs))))
     (if (pos? sec) nil nodes)))
 
@@ -55,37 +61,37 @@
   [[[_ recorder _ :as devs] monitor] path]
   (midi/stop! recorder)
   (when path
-    (midi/save! recorder path))
-  #_(mon/save! monitor "/var/tmp/sample.edn")
+    (save! path recorder monitor))
   (close! devs))
 
 (comment
-  (def midi-path "/var/tmp/sample.mid" )
+  (def out-path "/var/tmp/sample" )
 
-  (play! midi-path 5)
+  (play! out-path 5)
 
-  (def nodes (play! midi-path 0))
+  (def nodes (play! out-path 0))
   (show-status nodes)
   (do (end! nodes nil)
       (def nodes nil));
 
-  (record! midi-path 5)
+  (record! out-path 5)
 
-  (def nodes (record! midi-path 0))
+  (def nodes (record! out-path 0))
   (show-status nodes)
-  (do (end! nodes midi-path)
+  (do (end! nodes out-path)
       (def nodes nil));
 
   (require '[clojure.java.io :as io]
-           '[clojure.edn :as edn])
+           '[clojure.edn :as edn]
+           '[clojure.pprint :as pp])
   (let [events (->> "sample.edn"
                     io/resource
                     slurp
                     edn/read-string
-                    (sort-by first))]
-    #_(mon/align-events events)
-    (mon/render-events events)
-    #_(filter #(= (second %) :note) events))
+                    (sort-by first))
+        score (mon/render-events events)]
+    (spit "/var/tmp/b.edn"
+          (with-out-str (pp/pprint score)) ))
 
   )
 

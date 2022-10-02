@@ -1,4 +1,6 @@
 (ns mid1.monitor
+  (:require
+    [clojure.pprint :as pp])
   (:import
     [javax.sound.midi MidiMessage ShortMessage]))
 
@@ -18,6 +20,10 @@
 (def empty-state
   {:on-map {}
    :events []})
+
+(def note-alignment-factor 100)
+(def pedal-collapse-factor 250)
+(def step-resolution 600)
 
 (def ctlno-pedal 64)
 (defn- pedal-on? [val] (> val 63))
@@ -58,46 +64,85 @@
              :events (conj evs (note-event on-ts note velo (- ts on-ts))))
       st)))
 
-(defn align-events
-  [events]
-  (loop [aligned []
+(defn- process-events
+  [events ts-factor process-fn]
+  (loop [processed []
          prev-ts 0
          events events]
     (if (seq events)
       (let [event (first events)
-            ts (first event)]
-        (if (< (- ts prev-ts) 80)
-          (recur (conj aligned (assoc event 0 prev-ts))
-                 prev-ts
-                 (rest events))
-          (recur (conj aligned event)
-                 ts
-                 (rest events))))
-      aligned)))
+            ts (first event)
+            to-process? (< (- ts prev-ts) ts-factor)
+            [new-processed new-ts]
+            (if to-process?
+              (process-fn processed event prev-ts ts)
+              [(conj processed event) ts])
+            ]
+        (recur new-processed new-ts (rest events)))
+      processed)))
+
+(defn- align-notes
+  [notes]
+  (process-events
+    notes
+    note-alignment-factor
+    (fn [processed event prev-ts ts]
+      [(conj processed (assoc event 0 prev-ts)) prev-ts]
+      )))
+
+(defn- collapse-pedal-off
+  [pedals]
+  (process-events
+    pedals
+    pedal-collapse-factor
+    (fn [processed event prev-ts ts]
+      [(assoc processed (dec (count processed)) event) ts])))
+
+(defn- merge-pedals
+  [note-m peddals]
+  (let [tss (keys note-m)]
+    (reduce
+      (fn [note-m pedal]
+        (let [ts (first pedal)
+              note-ts (or
+                        (last (filter #(< % ts) tss))
+                        (first tss))]
+          (update note-m note-ts conj (assoc pedal 0 note-ts))))
+      note-m
+      peddals)))
 
 (defn- mk-note
   [[_ _ note-no _ length]]
   {:note-no note-no
    :hand :left
    :finger-no 1
-   :length (quot length 240)})
+   :length (inc (quot length step-resolution))})
+
+(defn- filter-events
+  [type-set events]
+  (filter #(type-set (second %)) events))
 
 (defn- mk-step
   [evs]
-  (let [notes (filter #(= (second %) :note) evs)
-        ped-on? (some #(= (second %) :pedal-on) evs)
-        ped-off? (some #(= (second %) :pedal-off) evs)
+  (let [notes (filter-events #{:note} evs)
+        ped-on? (seq (filter-events #{:pedal-on} evs))
+        ped-off? (seq (filter-events #{:pedal-off} evs))
         step (if ped-on? {:pedal :on}
                (if ped-off? {:pedal :off} {}))]
     (assoc step :notes (mapv mk-note notes))))
 
 (defn render-events
   [events]
-  (let [ev-m (->> events
-                  align-events
-                  (group-by first)
-                  (into (sorted-map)))
-        steps (mapv mk-step (vals ev-m))]
+  (let [notes (filter-events #{:note} events)
+        pedals (filter-events #{:pedal-on :pedal-off} events)
+        note-m (->> notes
+                    align-notes
+                    (group-by first)
+                    (into (sorted-map)))
+        pedals (->> pedals
+                    collapse-pedal-off)
+        score-m (merge-pedals note-m pedals)
+        steps (mapv mk-step (vals score-m))]
     {:title "unknown"
      :url ""
      :tempo 120
@@ -140,4 +185,4 @@
   [this path]
   (let [state (.state this)
         events (:events @state)]
-    (spit path (with-out-str (render-events events)))))
+    (spit path (with-out-str (pp/pprint (render-events events))))))
