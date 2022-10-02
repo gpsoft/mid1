@@ -131,7 +131,7 @@
                (if ped-off? {:pedal :off} {}))]
     (assoc step :notes (mapv mk-note notes))))
 
-(defn render-events
+(defn render-for-mpnote
   [events]
   (let [notes (filter-events #{:note} events)
         pedals (filter-events #{:pedal-on :pedal-off} events)
@@ -141,8 +141,8 @@
                     (into (sorted-map)))
         pedals (->> pedals
                     collapse-pedal-off)
-        score-m (merge-pedals note-m pedals)
-        steps (mapv mk-step (vals score-m))]
+        event-m (merge-pedals note-m pedals)
+        steps (mapv mk-step (vals event-m))]
     {:title "unknown"
      :url ""
      :tempo 120
@@ -181,8 +181,8 @@
   (let [state (.state this)]
     (:events @state)))
 
-(defn save!
+(defn save-for-mpnote!
   [this path]
   (let [state (.state this)
-        events (:events @state)]
-    (spit path (with-out-str (pp/pprint (render-events events))))))
+        events (sort-by first (:events @state))]
+    (spit path (with-out-str (pp/pprint (render-for-mpnote events))))))

@@ -37,7 +37,7 @@
 (defn save!
   [path recorder monitor]
   (midi/save! recorder (str path ".mid"))
-  (mon/save! monitor (str path ".edn")))
+  (mon/save-for-mpnote! monitor (str path ".edn")))
 
 (defn record!
   [path sec]
@@ -89,7 +89,7 @@
                     slurp
                     edn/read-string
                     (sort-by first))
-        score (mon/render-events events)]
+        score (mon/render-for-mpnote events)]
     (spit "/var/tmp/b.edn"
           (with-out-str (pp/pprint score)) ))
 
