@@ -144,13 +144,6 @@
     (println "IDLE")
     (show-status (st-nodes))))
 
-(defn cmd-auto
-  []
-  (case (st-mode)
-    :playing (cmd-stop)
-    :recording (cmd-stop)
-    (cmd-show-menu)))
-
 (defn cmd-show-menu
   []
   (println "### MENU ###")
@@ -161,6 +154,13 @@
   (println "q: quit")
   (println "?: show menu")
   true)
+
+(defn cmd-auto
+  []
+  (case (st-mode)
+    :playing (cmd-stop)
+    :recording (cmd-stop)
+    (cmd-show-menu)))
 
 (defn do-cmd
   [cmd]
