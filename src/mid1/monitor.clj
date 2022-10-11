@@ -29,6 +29,8 @@
 (defn- pedal-on? [val] (> val 63))
 (defn msec [usec] (quot usec 1000))
 
+(def approach-steps [{:bar-top? true, :notes []} {:notes []} {:notes []} {:notes []}])
+
 (defn- pedal-event
   [ts on?]
   [(msec ts) (if on? :pedal-on :pedal-off)])
@@ -142,7 +144,7 @@
         pedals (->> pedals
                     collapse-pedal-off)
         event-m (merge-pedals note-m pedals)
-        steps (mapv mk-step (vals event-m))]
+        steps (into approach-steps (mapv mk-step (vals event-m)))]
     {:title "unknown"
      :url ""
      :tempo 120
@@ -180,6 +182,12 @@
   [this]
   (let [state (.state this)]
     (:events @state)))
+
+(defn save-events!
+  [this path]
+  (let [state (.state this)
+        events (sort-by first (:events @state))]
+    (spit path (with-out-str (pp/pprint events)))))
 
 (defn save-for-mpnote!
   [this path]
