@@ -80,8 +80,8 @@
   (let [dev (MidiSystem/getSynthesizer)
         sb (MidiSystem/getSoundbank
              (io/resource
-               #_"FluidR3_GM.sf2"
-               "SalamanderGrandPiano.sf2"))]
+               "FluidR3_GM.sf2"
+               #_"SalamanderGrandPiano.sf2"))]
     (open-dev! dev)
     (.loadAllInstruments dev sb)
     dev))
