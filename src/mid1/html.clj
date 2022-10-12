@@ -5,6 +5,16 @@
 
 (def note-no-c4 60)
 
+(defn note-event
+  [[first-top length]]
+  (for [ix (range length)]
+    (let [top (+ first-top (* ix 22))
+          on? (zero? ix)
+          note-type (if on? "note" "dummy-note")]
+      [:div {:class (str note-type " left-note")
+             :style (str "top: " top "px;")}
+       (when on? "0")])))
+
 (defn octave
   [first-note-no num-notes ev-m]
   [:div {:class (str "octave " "keys-" num-notes)}
@@ -17,16 +27,6 @@
         (when ev-m
           (when-let [evs (get ev-m note-no)]
             (mapcat note-event evs)))]))])
-
-(defn note-event
-  [[first-top length]]
-  (for [ix (range length)]
-    (let [top (+ first-top (* ix 22))
-          on? (zero? ix)
-          note-type (if on? "note" "dummy-note")]
-      [:div {:class (str note-type " left-note")
-             :style (str "top: " top "px;")}
-       (when on? "0")])))
 
 (defn octaves
   []
@@ -56,9 +56,10 @@
       [:a {:href "#", :class "btn rewind"}]
       [:a {:href "#", :class "btn fast-forward"}]]]]])
 
-(defn html-str
-  [inner-body]
-  (str "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mid1</title><link rel=\"stylesheet\" type=\"text/css\" href=\"css/reset.css\"><link rel=\"stylesheet\" type=\"text/css\" href=\"css/mid1.css\"></head><body>" inner-body "</body></html>"))
+(defn render-notes
+  [ev-m]
+  (let [inner-body (html (body ev-m))]
+    (str "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mid1</title><link rel=\"stylesheet\" type=\"text/css\" href=\"css/reset.css\"><link rel=\"stylesheet\" type=\"text/css\" href=\"css/mid1.css\"></head><body>" inner-body "</body></html>")))
 
 (comment
   
@@ -66,6 +67,6 @@
   (html (note-event 100 3))
   (let [ev-m {
               60 [[100 1][200 2][300 3]]}]
-    (spit "html/hoge.html" (html-str (html (body ev-m)))))
+    (spit "html/hoge.html" (render-notes ev-m)))
   )
 

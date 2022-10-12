@@ -1,5 +1,6 @@
 (ns mid1.core
   (:require
+    [overtone.at-at :as at]
     [mid1.midi :as midi]
     [mid1.monitor :as mon])
   (:gen-class))
@@ -162,6 +163,13 @@
     :recording (cmd-stop)
     (cmd-show-menu)))
 
+(defn cmd-interval
+  []
+  #_(show-status (st-nodes))
+  (when (st-recording?)
+    (let [[_ monitor] (st-nodes)]
+      (mon/save-in-html! monitor (str base-path ".html")))))
+
 (defn do-cmd
   [cmd]
   (println "------------------")
@@ -183,6 +191,16 @@
 
 (defn -main
   [& args]
-  (loop [cmd (prompt)]
-    (when (not= (do-cmd cmd) :quit)
-      (recur (prompt)))))
+  (let [pool (at/mk-pool)
+        interval (at/every 500 #'cmd-interval pool)]
+    (try
+      (loop [cmd (prompt)]
+        (when (not= (do-cmd cmd) :quit)
+          (recur (prompt))))
+      (catch Exception e
+        (prn e))
+      (finally (at/stop interval)
+               (at/stop-and-reset-pool! pool)
+               #_(shutdown-agents)
+               (println "Good bye")
+               (flush)))))

@@ -1,6 +1,7 @@
 (ns mid1.monitor
   (:require
-    [clojure.pprint :as pp])
+    [clojure.pprint :as pp]
+    [mid1.html :as html])
   (:import
     [javax.sound.midi MidiMessage ShortMessage]))
 
@@ -194,3 +195,10 @@
   (let [state (.state this)
         events (sort-by first (:events @state))]
     (spit path (with-out-str (pp/pprint (render-for-mpnote events))))))
+
+(defn save-in-html!
+  [this path]
+  (let [state (.state this)
+        events (sort-by first (:events @state))
+        ev-m {60 [[100 1][200 2][300 3]]}]
+    (spit path (html/render-notes ev-m))))
