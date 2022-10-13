@@ -57,13 +57,13 @@
          (octave f n nil nil))]]
      [:div {:class "annotation-col"}]
      [:div {:style "transform: translate(0px);", :class "control-panel"}
-      [:a {:href "#", :class "btn rewind"}]
-      [:a {:href "#", :class "btn fast-forward"}]]]]])
+      [:a {:href "#", :class "btn rewind jsRewindBtn"}]
+      [:a {:href "#", :class "btn fast-forward jsFastForwardBtn"}]]]]])
 
 (defn render-notes
   [ev-m ts-max]
   (let [inner-body (html (body ev-m ts-max))]
-    (str "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mid1</title><link rel=\"stylesheet\" type=\"text/css\" href=\"css/reset.css\"><link rel=\"stylesheet\" type=\"text/css\" href=\"css/mid1.css\"></head><body>" inner-body "</body></html>")))
+    (str "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mid1</title><link rel=\"stylesheet\" type=\"text/css\" href=\"css/reset.css\"><link rel=\"stylesheet\" type=\"text/css\" href=\"css/mid1.css\"></head><body>" inner-body "<script src=\"https://code.jquery.com/jquery-3.6.0.min.js\"></script><script src=\"js/mid1.js\"></script></body></html>")))
 
 (comment
   
