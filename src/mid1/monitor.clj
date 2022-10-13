@@ -151,6 +151,15 @@
      :tempo 120
      :steps steps}))
 
+(defn render-for-html
+  [events]
+  (let [notes (filter-events #{:note} events)
+        ts-max (ffirst (reverse (sort-by first notes)))
+        note-m (->> notes
+                    (map html/html-note)
+                    (group-by first))]
+    (html/render-notes note-m ts-max)))
+
 (defn mon-init
   []
   [[] (atom empty-state)])
@@ -200,5 +209,5 @@
   [this path]
   (let [state (.state this)
         events (sort-by first (:events @state))
-        ev-m {60 [[100 1][200 2][300 3]]}]
-    (spit path (html/render-notes ev-m))))
+        html-doc (render-for-html events)]
+    (spit path html-doc)))

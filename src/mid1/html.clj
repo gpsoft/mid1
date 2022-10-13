@@ -5,18 +5,22 @@
 
 (def note-no-c4 60)
 
+(defn html-note
+  [[ts _ note-no velocity length]]
+  [note-no (quot ts 10) (inc (quot length 500)) velocity])
+
 (defn note-event
-  [[first-top length]]
+  [[_ ts length] ts-max]
   (for [ix (range length)]
-    (let [top (+ first-top (* ix 22))
+    (let [bottom (- (quot ts-max 10) ts (* ix 22))
           on? (zero? ix)
           note-type (if on? "note" "dummy-note")]
       [:div {:class (str note-type " left-note")
-             :style (str "top: " top "px;")}
+             :style (str "bottom: " bottom "px;")}
        (when on? "0")])))
 
 (defn octave
-  [first-note-no num-notes ev-m]
+  [first-note-no num-notes ev-m ts-max]
   [:div {:class (str "octave " "keys-" num-notes)}
    (for [ix (range num-notes)]
      (let [note-no (+ first-note-no ix)
@@ -26,7 +30,7 @@
               :data-note-no (str note-no)}
         (when ev-m
           (when-let [evs (get ev-m note-no)]
-            (mapcat note-event evs)))]))])
+            (mapcat #(note-event % ts-max) evs)))]))])
 
 (defn octaves
   []
@@ -37,7 +41,7 @@
    [108 1]])
 
 (defn body
-  [ev-m]
+  [ev-m ts-max]
   [:div {:id "app"}
    [:div {:class "app"}
     [:div {:class "main-container"}
@@ -46,19 +50,19 @@
      [:div {:class "main-col"}
       [:div {:class "timeline jsTimeline"}
        (for [[f n] (octaves)]
-         (octave f n ev-m))
+         (octave f n ev-m ts-max))
        [:div {:style "bottom: 20px;", :class "cur-step"}]]
       [:div {:class "keys-88"}
        (for [[f n] (octaves)]
-         (octave f n nil))]]
+         (octave f n nil nil))]]
      [:div {:class "annotation-col"}]
      [:div {:style "transform: translate(0px);", :class "control-panel"}
       [:a {:href "#", :class "btn rewind"}]
       [:a {:href "#", :class "btn fast-forward"}]]]]])
 
 (defn render-notes
-  [ev-m]
-  (let [inner-body (html (body ev-m))]
+  [ev-m ts-max]
+  (let [inner-body (html (body ev-m ts-max))]
     (str "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>mid1</title><link rel=\"stylesheet\" type=\"text/css\" href=\"css/reset.css\"><link rel=\"stylesheet\" type=\"text/css\" href=\"css/mid1.css\"></head><body>" inner-body "</body></html>")))
 
 (comment

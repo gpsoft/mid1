@@ -1,5 +1,6 @@
 (ns mid1.core
   (:require
+    [clojure.java.io :as io]
     [overtone.at-at :as at]
     [mid1.midi :as midi]
     [mid1.monitor :as mon])
@@ -14,10 +15,14 @@
 (defn st-playing? [] (= (st-mode) :playing))
 (defn st-recording? [] (= (st-mode) :recording))
 
-(defn tmp-dir
-  []
-  (System/getProperty "java.io.tmpdir"))
-(def base-path (str (tmp-dir) "/mid1"))
+(defn tmp-dir [] (System/getProperty "java.io.tmpdir"))
+(defn path-separator [] (System/getProperty "file.separator"))
+(defonce base-path (let [dir (tmp-dir)
+                         sepa (path-separator)
+                         dir (if (.endsWith dir sepa) dir (str dir sepa))
+                         path (str (tmp-dir) "mid1" sepa "mid1")
+                         _ (io/make-parents path)]
+                     path))
 
 (defn open!
   []
@@ -109,7 +114,22 @@
     (spit "/var/tmp/b.edn"
           (with-out-str (pp/pprint score)) ))
 
+  (let [events '([6520 :note 56 42 731]
+                 [6559 :note 44 41 1778]
+                 [6566 :note 60 46 1714]
+                 [7174 :note 51 31 633]
+                 [7741 :note 56 36 652]
+                 [8368 :note 51 17 434]
+                 [8876 :note 49 30 1805]
+                 )
+        events (->> (str base-path "-raw.edn")
+                    slurp
+                    edn/read-string
+                    (sort-by first))
+        html (mon/render-for-html events)]
+    (spit (str base-path "-hoge.html") html))
   )
+
 
 (defn cmd-start-playback
   []
