@@ -18,20 +18,20 @@
         port (not (or sqcr synth))
         in (zero? (.getMaxReceivers dev))]
     (cond
-      sqcr :sequencer
-      synth :synthesizer
-      in :in-port
-      :else :out-port)))
+      sqcr :seq
+      synth :syn
+      in :pt-i
+      :else :pt-o)))
 
 (defmulti render dev-type)
-(defmethod render :sequencer [dev]
+(defmethod render :seq [dev]
   (let [rec (.isRecording dev)
         run (.isRunning dev)
         tick (.getTickPosition dev)
         len (.getTickLength dev)
         st (if rec "recording" (if run "playing" "idle"))]
     (format "TICK:%d,LEN:%d %s" tick len st)))
-(defmethod render :synthesizer [dev]
+(defmethod render :syn [dev]
   (let [latency (.getLatency dev)]
     (format "LATENCY:%d" latency)))
 (defmethod render :default [dev]
@@ -43,17 +43,17 @@
     (let [klass (.getClass dev)
           id (System/identityHashCode dev)
           info (.getDeviceInfo dev)
-          name (.getName info)
+          nm (.getName info)
           open (.isOpen dev)
-          type (dev-type dev)
+          tp (.toUpperCase (name (dev-type dev)))
           rxs (count (.getReceivers dev))
           txs (count (.getTransmitters dev))]
-      (format "%25s %s TX:%d,RX:%d %s"
-              name (if open "open" "close") txs rxs (render dev)))))
+      (format "%4s %25s %s TX:%d,RX:%d %s"
+              tp nm (if open "open" "close") txs rxs (render dev)))))
 
 (defn render-monitor
   [monitor]
-  (format "%25s %s" "Monitor" (mon/render monitor)))
+  (format "%4s %25s %s" "MON" "Monitor" (mon/render monitor)))
 
 (defn list-devices
   []
@@ -104,10 +104,10 @@
     dev))
 (defn open-d1-in!
   []
-  (open-d1-port! :in-port))
+  (open-d1-port! :pt-i))
 (defn open-d1-out!
   []
-  (open-d1-port! :out-port))
+  (open-d1-port! :pt-o))
 
 (defn open-monitor!
   []

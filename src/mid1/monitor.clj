@@ -169,6 +169,14 @@
   (let [state (.state this)]
     (reset! state empty-state)))
 
+(defn- prn-msg
+  [msg]
+  (let [status (.getStatus msg)
+        val1 (.getData1 msg)
+        val2 (.getData2 msg)]
+    (when (not= status 0xfe)
+      (prn (format "%02x,%d,%d" status val1 val2)))))
+
 (defn mon-send
   [this ^ShortMessage msg ts]
   (let [state (.state this)
@@ -176,6 +184,7 @@
         val1 (.getData1 msg)
         val2 (.getData2 msg)]
     #_(prn @state)
+    #_(prn-msg msg)
     (cond
       (.equals status ShortMessage/NOTE_ON) (swap! state keep-on ts val1 val2)
       (.equals status ShortMessage/NOTE_OFF) (swap! state resolve-note ts val1)
