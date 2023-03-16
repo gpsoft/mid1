@@ -17,11 +17,12 @@
 
 (defn tmp-dir [] (System/getProperty "java.io.tmpdir"))
 (defn path-separator [] (System/getProperty "file.separator"))
-(defonce base-path (let [dir (tmp-dir)
-                         sepa (path-separator)
-                         dir (if (.endsWith dir sepa) dir (str dir sepa))
-                         path (str (tmp-dir) "mid1" sepa "mid1")
-                         _ (io/make-parents path)]
+(defonce savedir-path (let [dir (tmp-dir)
+                            sepa (path-separator)
+                            dir (if (.endsWith dir sepa) dir (str dir sepa))]
+                        (str dir "mid1" sepa)))
+(defonce base-path (let [_ (io/make-parents savedir-path)
+                         path (str savedir-path "mid1")]
                      path))
 
 (defn open!
@@ -158,6 +159,11 @@
       (st-mode! :idle)
       (st-nodes! nil))))
 
+(defn cmd-open-folder
+  []
+  (.open (java.awt.Desktop/getDesktop)
+         (new java.io.File savedir-path)))
+
 (defn cmd-show-status
   []
   (println "### STATUS ###")
@@ -171,6 +177,7 @@
   (println "p: start playback")
   (println "r: start recording")
   (println "s: stop playback or recording")
+  (println "o: open folder")
   (println "m: show status")
   (println "q: quit")
   (println "?: show menu")
@@ -198,6 +205,7 @@
     "p" (cmd-start-playback)
     "r" (cmd-start-recording)
     "s" (cmd-stop)
+    "o" (cmd-open-folder)
     "m" (cmd-show-status)
     "q" :quit
     "?" (cmd-show-menu)
